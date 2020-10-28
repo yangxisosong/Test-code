@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="shortcut icon" href="#" />
+    <style>
+        #editordiv {
+            position: absolute;
+            width: calc(50vw - 150px);;
+            height: 100%;
+            right: 50%;
+            top: 0px;
+            overflow: hidden;
+            background-color: bisque
+        }
+
+        .view {
+            position: absolute;
+            width: 50%;
+            height: 100%;
+            right: 0;
+            top: 0px;
+            overflow: hidden;
+            background-color: darkturquoise;
+        }
+
+
+        #inputdiv {
+            padding: 0;
+            height: 33px;
+            background: #f6f6f6
+        }
+
+        .bu {
+            height: 100%;
+            float: right;
+        }
+
+        #codetext {
+            /* position: absolute; */
+            position: absolute;
+            bottom: 0px;
+            top: 33px;
+            width: 100%;
+        }
+
+        #text {
+            width: 50%;
+            float: left;
+            height: 33px;
+        }
+
+        #d_menu {
+            width: 50%;
+            float: right;
+            height: 33px;
+            /* margin-top: 0px; */
+        }
+
+        #viewiframe {
+            width: 100%;
+            height: 100%;
+        }
+
+        #htmllist {
+            position: absolute;
+            width: 150px;
+            height: 100%;
+            left: 0px;
+            top: 0px;
+            overflow: auto;
+            background-color: #f6f6f6;
+            text-align: center;
+        }
+
+        .htmlbutton {
+            width: 100%;
+            height: 40px;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../node_modules/codemirror/lib/codemirror.js"></script>
+    <script src="../node_modules/codemirror/mode/javascript/javascript.js"></script>
+    <link rel="stylesheet" href="../node_modules/codemirror/lib/codemirror.css">
+    <link href="../node_modules/codemirror/theme/mdn-like.css" rel="stylesheet">
+    <script src="../node_modules/codemirror/addon/selection/active-line.js"></script>
+    <script src="../node_modules/codemirror/addon/edit/matchbrackets.js"></script>
+    <!-- <script src="../node_modules/codemirror/mode/htmlmixed/htmlmixed.js"></script> -->
+    <script src="../node_modules/codemirror/mode/css/css.js"></script>
+    <script src="js/work.js"></script>
+    <!-- <div class="editordiv">
+        <textarea id="code_area" class="editor">
+        </textarea>
+    </div> -->
+
+    <div id="editordiv">
+        <div id="inputdiv">
+            <div id="d_menu">
+                <input class="bu" type="button" value="执行" onclick="run()"></input>
+                <input class="bu" type="button" value="保存页面" onclick="writefile()"></input>
+                <input class="bu" type="button" value="跳转" onclick="changetest()"></input>
+            </div>
+            <div id="text">
+                <span style="line-height: 33px ;padding-left: 40px;">源代码编辑器</span>
+                <span id="htmlname" style="line-height: 33px ;padding-left: 40px;"></span>
+            </div>
+        </div>
+        <div id="codetext">
+            <textarea id="scriptDesc" name="scriptDesc"></textarea>
+        </div>
+    </div>
+    <div id="view" class="view">
+        <iframe class="viewiframe" id="viewiframe">
+        </iframe>
+    </div>
+    <div id="htmllist" class="htmllist">
+        <p>网页列表</p>
+    </div>
+    <script>
+
+        // function Gethtmlstr(url, callback) {
+        //     let worker = new Worker('js/work.js');
+        //     worker.postMessage(url);
+        //     worker.onmessage = function (event) {
+        //         callback(event.data);
+        //         worker.terminate();
+        //     }
+        // }
+        function OpenWorker(url, callback, type, msg) {
+            let worker = new Worker('js/worker.js');
+            let param = {
+                m_type:type,
+                m_msg:msg,
+                m_url:url
+            }
+            worker.postMessage(param);
+            worker.onmessage = function (event) {
+                callback(event.data);
+                worker.terminate();
+            }
+        }
+
+        function doSomething(type) {
+            // 执行任务
+            // console.log(type);
+            editor.setValue(type);
+            runstart(type);
+        }
+
+        function changetest(){
+            //OpenWorker(window.location.origin + "/test",(e)=>{console.log(e)},"get");
+            window.location.href=window.location.origin + "/test"
+        }
+        //初始化编辑器
+        var editor = CodeMirror.fromTextArea(document
+            .getElementById("scriptDesc"), {
+            lineNumbers: true,
+            matchBrackets: true,
+            styleActiveLine: true,// 当前行背景高亮
+            scrollbarStyle: "null", //设置滚动样式
+            // mode:"htmlmixed",
+            theme: 'mdn-like',
+        });
+        editor.setSize('auto', "100%");
+        function initview(str) {
+            let dom = document.getElementById("htmlname");
+            dom.innerText = str;
+        }
+        initview("初始化页面");
+        OpenWorker('../demo_初始化页面.html', doSomething,"get");
+        testget();
+
+        let ListArry=[];
+        function addbutton(name) {
+            let bu = document.createElement("input");
+            bu.id = name;
+            bu.classList.add("htmlbutton");
+            bu.type = "button";
+            let start = name.indexOf("_") + 1;
+            let end = name.indexOf(".");
+            bu.value = name.substr(start, end - start);
+            let path = "../" + name;
+            bu.onclick = ClickEvent;//Changehtml(path);
+
+            let divlist = document.getElementById("htmllist");
+            divlist.appendChild(bu);
+        }
+        function testget() {
+            OpenWorker(window.location.origin + "/getfilearry", (e) => {
+                let out = JSON.parse(e);
+                out.name.forEach(element => {
+                    if (element.search("html") > 0 && element.search("demo") >= 0) {
+                        ListArry.push(element);
+                        addbutton(element);
+                    }
+                });
+                console.log(out);
+            },"get");
+        }
+        function run() {
+            var iframeContent = window.nowthmlstring;
+            if (editor) {
+                iframeContent = editor.getValue();
+            }
+
+            var nr = iframeContent.indexOf("<body>");
+            var iframeHead = iframeContent.slice(0, nr);
+
+            var iframeFooter = iframeContent.slice(nr, iframeContent.length);
+            var iFrame = document.getElementById("viewiframe").contentWindow;
+            iFrame.document.open();
+            iFrame.document.write(iframeHead);
+            iFrame.document.write(iframeFooter);
+            iFrame.document.close();
+        }
+        function runstart(iframeContent) {
+            var nr = iframeContent.indexOf("<body>");
+            var iframeHead = iframeContent.slice(0, nr);
+
+            var iframeFooter = iframeContent.slice(nr, iframeContent.length);
+            var iFrame = document.getElementById("viewiframe").contentWindow;
+            iFrame.document.open();
+            iFrame.document.write(iframeHead);
+            iFrame.document.write(iframeFooter);
+            iFrame.document.close();
+        }
+
+        function Changehtml(htmlpath) {
+            OpenWorker(htmlpath, (str) => {
+                runstart(str);
+                editor.setValue(str);
+            },"get");
+        }
+
+        function initedit(str) {
+            runstart(str);
+            editor.setValue(str);
+        }
+
+        function ClickEvent(dom) {
+            //console.log(dom,this.id);
+            let path = "../" + this.id;
+            let start = this.id.indexOf("_") + 1;
+            let end = this.id.indexOf(".");
+            let value = this.id.substr(start, end - start);
+            initview(value);
+            OpenWorker(path, initedit,"get")
+        }
+
+        function writefile() {
+            let list=document.getElementById("htmllist");
+            list.children.length;
+            let writename ="demo_新建页面"+list.children.length+".html"
+            let postmsg = {
+                msg: editor.getValue(),
+                name: writename
+            }
+            let ms = JSON.stringify(postmsg);
+            OpenWorker(window.location.origin + "/creatfile",(e)=>{
+                console.log(e);
+                UpdateListView()
+            },"post",ms);
+        }
+
+        function UpdateListView(){
+            OpenWorker(window.location.origin + "/getfilearry", (e) => {
+                let out = JSON.parse(e);
+                out.name.forEach(element => {
+                    if (element.search("html") > 0 && element.search("demo") >= 0) {
+                        if(ListArry.indexOf(element)<0)
+                        {
+                            ListArry.push(element);
+                            addbutton(element);
+                        }
+                    }
+                });
+                console.log(out);
+            },"get");
+        }
+
+    </script>
+</body>
+
+</html>
